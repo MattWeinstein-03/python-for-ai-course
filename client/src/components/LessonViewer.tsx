@@ -353,7 +353,7 @@ export default function LessonViewer({
 
   return (
     <ScrollArea className="flex-1 h-full">
-      <div className="max-w-3xl mx-auto px-6 py-8 pb-16">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-8 pb-16">
         {/* Lesson header */}
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 mb-3">
