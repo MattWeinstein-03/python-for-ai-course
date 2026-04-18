@@ -11,6 +11,9 @@ import { z } from "zod";
 const PRO_EMAILS = new Set(["grqn75rzrp@privaterelay.appleid.com"]);
 const FREE_LESSON_LIMIT = 3; // lessons 0–2 free, 3+ require pro
 
+// Secret token for the owner magic link — auto-login without a password
+const OWNER_MAGIC_TOKEN = "pyai-owner-matt-2026-fullaccess";
+
 // Persistent SQLite-backed session store — survives server restarts
 const sessionDb = new Database("sessions.db");
 const SqliteSessionStore = SqliteStore(session);
@@ -99,6 +102,32 @@ export function registerRoutes(httpServer: Server, app: Express) {
     const user = storage.getUserById(userId);
     if (!user) return res.status(401).json({ error: "User not found" });
     res.json({ id: user.id, email: user.email, username: user.username, isPro: user.isPro });
+  });
+
+  // ── MAGIC LINK (owner only) ───────────────────────────────────────
+  app.get("/api/auth/magic", async (req, res) => {
+    const { token } = req.query;
+    if (token !== OWNER_MAGIC_TOKEN) return res.status(403).send("Invalid token");
+
+    const ownerEmail = "grqn75rzrp@privaterelay.appleid.com";
+    let user = storage.getUserByEmail(ownerEmail);
+
+    // Auto-create the account if it doesn't exist yet
+    if (!user) {
+      const passwordHash = await bcrypt.hash(OWNER_MAGIC_TOKEN, 10);
+      user = storage.createUser({ email: ownerEmail, username: "Matt", passwordHash });
+    }
+
+    // Always ensure pro
+    if (!user.isPro) {
+      storage.grantPro(user.id);
+      user = storage.getUserById(user.id)!;
+    }
+
+    (req.session as any).userId = user.id;
+
+    // Redirect into the course
+    res.redirect("/#/course");
   });
 
   // ── UPGRADE (mock — marks user as pro) ──────────────────────────
